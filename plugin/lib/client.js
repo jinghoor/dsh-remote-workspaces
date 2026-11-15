@@ -157,7 +157,8 @@ window.__ModuleLoader__.load({
 
     function HostCard(props) {
       const host = props.host
-      const [open, setOpen] = react.useState(false)
+      // 工作区列表默认展开：这里就是用户最常看的那一屏，多一次点击没意义。
+      const [open, setOpen] = react.useState(true)
       const [items, setItems] = react.useState(null)
       const [busy, setBusy] = react.useState(false)
       const [note, setNote] = react.useState(null)
