@@ -1,6 +1,6 @@
 {
   "name": "dsh-remote-workspaces",
-  "version": "1.1.2",
+  "version": "1.1.3",
   "description": "把另一台电脑上的 DSH 工作区与会话并进本机侧边栏，自带账号、端到端隧道和设置页。",
   "type": "module",
   "main": "lib/index.js",
@@ -10,6 +10,9 @@
     "./package.json": "./package.json"
   },
   "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
     "client": {
       "inject": [],
       "platform": "web"
@@ -25,7 +28,8 @@
     "lib/tunnel.mjs",
     "lib/dsh-relay.mjs",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "cordis.patch.yml"
   ],
   "engines": {
     "dsh": ">=0.2.1-0"

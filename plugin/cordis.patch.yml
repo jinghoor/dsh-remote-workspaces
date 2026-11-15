@@ -1,0 +1,4 @@
+# 组合包：插件管理器只接管声明了 dsh.bundle.patch 的包。这一行就是它要的那条登记。
+- insert:
+    - id: dsh-remote-workspaces
+      name: dsh-remote-workspaces

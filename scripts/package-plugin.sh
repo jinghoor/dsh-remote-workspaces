@@ -9,7 +9,8 @@ STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
 
 mkdir -p "$STAGE/dsh-remote-workspaces"
-cp "$REPO/plugin/package.json" "$REPO/plugin/README.md" "$REPO/plugin/LICENSE" "$STAGE/dsh-remote-workspaces/"
+cp "$REPO/plugin/package.json" "$REPO/plugin/README.md" "$REPO/plugin/LICENSE" \
+   "$REPO/plugin/cordis.patch.yml" "$STAGE/dsh-remote-workspaces/"
 cp -R "$REPO/plugin/lib" "$STAGE/dsh-remote-workspaces/lib"
 # 插件自带隧道引擎，保证 GUI 与 CLI 同一份实现
 cp "$REPO/cli/dsh-relay.mjs" "$STAGE/dsh-remote-workspaces/lib/dsh-relay.mjs"
