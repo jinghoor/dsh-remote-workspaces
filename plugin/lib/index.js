@@ -16,6 +16,15 @@ const name = 'remote-workspaces'
 const inject = []
 
 /** Workspace ids we synthesise carry the owning host, so routing never needs a lookup. */
+// Single source of truth: the package manifest the loader actually installed.
+const VERSION = (() => {
+  try {
+    return JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version ?? '0.0.0'
+  } catch {
+    return '0.0.0'
+  }
+})()
+
 const REMOTE_PREFIX = 'remote:'
 const MARKER = ' 🌐'
 
@@ -726,7 +735,7 @@ function apply(ctx, rawConfig) {
     })
 
     route('/relay/status', (req, res) => {
-      guard(res, 'relay-status', async () => send(res, 200, { ok: true, value: state.tunnel.status() }))
+      guard(res, 'relay-status', async () => send(res, 200, { ok: true, value: { version: VERSION, ...state.tunnel.status() } }))
     })
 
     route('/relay/save', (req, res) => {

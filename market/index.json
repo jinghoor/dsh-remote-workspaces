@@ -46,7 +46,7 @@
         "en": "Another computer's workspaces appear in the same sidebar tree, marked with a globe. Ships with a public relay: install, register, log in on two devices, done.",
         "zh": "另一台电脑的工作区会并进同一棵侧边栏树，带地球标记。内置公共中转：装上、注册、两台设备登录同一账号即可互连。"
       },
-      "author": "dsh-remote-workspaces authors",
+      "author": "jinghoor <277030704@qq.com>",
       "homepage": "https://github.com/jinghoor/dsh-remote-workspaces#readme",
       "repository": {
         "url": "https://github.com/jinghoor/dsh-remote-workspaces"
@@ -66,7 +66,7 @@
       },
       "versions": [
         {
-          "version": "1.1.2",
+          "version": "1.1.4",
           "publishTimestamp": 1794730689,
           "source": {
             "type": "git",

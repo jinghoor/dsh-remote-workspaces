@@ -9,6 +9,14 @@ window.__ModuleLoader__.load({
 
     var SECTION_ID = 'remote-hosts'
 
+    var PROJECT = {
+      name: 'DSH远程客户端',
+      repo: 'https://github.com/jinghoor/dsh-remote-workspaces',
+      mail: '277030704@qq.com',
+      qq: '587118291',
+      qqName: 'DSH远程客户端插件交流群',
+    }
+
     var styles = {
       wrap: { display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 880 },
       card: {
@@ -64,6 +72,12 @@ window.__ModuleLoader__.load({
       error: { padding: '10px 20px', color: '#f87171', fontSize: 12, whiteSpace: 'pre-wrap' },
       ok: { padding: '0 20px 12px', color: '#6ee7a8', fontSize: 12 },
       foot: { fontSize: 11.5, opacity: 0.45, padding: '0 2px' },
+      link: {
+        fontSize: 12.5,
+        color: 'var(--dsh-link, #60a5fa)',
+        textDecoration: 'none',
+        cursor: 'pointer',
+      },
       row: { display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap', marginTop: 10 },
       field: { display: 'flex', flexDirection: 'column', gap: 5, minWidth: 140 },
       fieldLabel: { fontSize: 11.5, color: 'var(--dsh-text-secondary, rgba(255,255,255,.55))' },
@@ -367,6 +381,24 @@ window.__ModuleLoader__.load({
       }
 
       return h('div', { style: styles.wrap },
+
+        // 0. 关于：版本与联系方式，放在最顶部方便复制/反馈
+        h('div', { style: styles.card },
+          h('div', { style: styles.headRow },
+            h('span', { style: styles.cardTitle }, PROJECT.name),
+            h('span', { style: { ...styles.hint, marginLeft: 8 } }, `v${status?.version ?? '…'}`),
+            h('span', { style: { marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' } },
+              h('a', {
+                style: styles.link,
+                href: PROJECT.repo,
+                target: '_blank',
+                rel: 'noreferrer',
+                onClick: (event) => { event.preventDefault(); window.open(PROJECT.repo, '_blank', 'noopener') },
+              }, 'GitHub'),
+              h('a', { style: styles.link, href: `mailto:${PROJECT.mail}` }, PROJECT.mail),
+              h('span', { style: styles.hint }, `${PROJECT.qqName} ${PROJECT.qq}`),
+            )),
+        ),
 
         // 1. 账号
         h('div', { style: styles.card },
