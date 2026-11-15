@@ -738,6 +738,44 @@ function apply(ctx, rawConfig) {
       guard(res, 'relay-status', async () => send(res, 200, { ok: true, value: { version: VERSION, ...state.tunnel.status() } }))
     })
 
+    // 账号下的设备清单：面板用它列出「还能连哪几台」。
+    route('/relay/devices', (req, res) => {
+      guard(res, 'relay-devices', async () => {
+        const config = readRelayConfig()
+        if (typeof config.token !== 'string' || config.token === '') {
+          return send(res, 200, { ok: false, error: '还没有登录' })
+        }
+        const answer = await relayRequest(config, 'GET', '/v1/devices')
+        if (answer.ok !== true) return send(res, 200, { ok: false, error: answer.error ?? `HTTP ${answer.status}` })
+        send(res, 200, { ok: true, value: { devices: answer.devices ?? [] } })
+      })
+    })
+
+    // 为账号下的另一台设备开一条额外隧道（本地端才能用）。
+    route('/relay/tunnel/start', (req, res) => {
+      guard(res, 'relay-tunnel-start', async () => {
+        const body = await readJson(req, 64 * 1024)
+        const device = typeof body?.device === 'string' ? body.device.trim() : ''
+        if (device === '') return send(res, 400, { ok: false, error: '需要 device' })
+        const started = await state.tunnel.startExtra({
+          device,
+          listen: typeof body?.listen === 'number' ? body.listen : undefined,
+          profileConfigPath: store.configPath(),
+        })
+        send(res, 200, { ok: true, value: started })
+      })
+    })
+
+    route('/relay/tunnel/stop', (req, res) => {
+      guard(res, 'relay-tunnel-stop', async () => {
+        const body = await readJson(req, 64 * 1024)
+        const id = typeof body?.id === 'string' ? body.id : ''
+        if (id === '') return send(res, 400, { ok: false, error: '需要 id' })
+        const stopped = await state.tunnel.stopExtra(id)
+        send(res, 200, { ok: true, value: stopped })
+      })
+    })
+
     route('/relay/save', (req, res) => {
       guard(res, 'relay-save', async () => {
         const body = await readJson(req, 64 * 1024)
@@ -827,7 +865,7 @@ function apply(ctx, rawConfig) {
 
     route('/relay/stop', (req, res) => {
       guard(res, 'relay-stop', async () => {
-        const stopped = await state.tunnel.stop()
+        const stopped = await state.tunnel.stopAll()
         send(res, 200, { ok: true, value: stopped })
       })
     })

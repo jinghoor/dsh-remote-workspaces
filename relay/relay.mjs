@@ -520,7 +520,12 @@ function serveApi(socket, method, rawPath, headers, body) {
   if (username === undefined) return httpReply(socket, 401, { ok: false, error: 'missing or invalid token' })
   if (pathname === '/v1/whoami') return httpReply(socket, 200, { ok: true, username })
   if (pathname === '/v1/devices') {
-    return httpReply(socket, 200, { ok: true, username, devices: accounts.devicesOf(username) })
+    // `online` tells the panel which of the account's machines can be connected right now.
+    const devices = accounts.devicesOf(username).map((item) => ({
+      ...item,
+      online: agents.has(`user:${username}/${item.device}`),
+    }))
+    return httpReply(socket, 200, { ok: true, username, devices })
   }
   return httpReply(socket, 404, { ok: false, error: 'not found' })
 }

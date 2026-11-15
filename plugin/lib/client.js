@@ -315,6 +315,7 @@ window.__ModuleLoader__.load({
       const [endpointFile, setEndpointFile] = react.useState('')
       const [editing, setEditing] = react.useState(null)
       const [adding, setAdding] = react.useState(false)
+      const [devices, setDevices] = react.useState([])
 
       const load = react.useCallback(() => {
         api('/relay/status')
@@ -334,6 +335,9 @@ window.__ModuleLoader__.load({
         api('/remote-workspaces/config')
           .then(setConfig)
           .catch((e) => setError(String(e.message ?? e)))
+        api('/relay/devices')
+          .then((value) => setDevices(value.devices ?? []))
+          .catch(() => setDevices([]))
       }, [])
 
       react.useEffect(load, [load])
@@ -493,6 +497,38 @@ window.__ModuleLoader__.load({
                 onClick: () => run(() => post('/relay/stop'), '已停止'),
               }, '停止'))),
           ),
+
+        // 2.5 账号下的其他设备：一键开额外隧道，本地端可同时看多台
+        signedIn
+          ? h('div', { style: styles.card },
+              h('div', { style: styles.headRow },
+                h('span', { style: styles.cardTitle }, '账号下的其他设备'),
+                h('span', { style: { marginLeft: 'auto', ...styles.hint } },
+                  devices.length === 0 ? '' : `共 ${devices.length} 台`)),
+              devices.filter((item) => item.device !== device).length === 0
+                ? h('div', { style: { ...styles.hint, padding: '0 20px 16px' } },
+                    '账号下还没有其他设备。在另一台机器上登录同一账号并启动，这里就会出现。')
+                : h('div', { style: styles.host },
+                    devices.filter((item) => item.device !== device).map((item) => {
+                      const tunnel = (status?.tunnels ?? []).find((entry) => entry.id === `device-${item.device}`)
+                      const linked = tunnel?.running === true
+                      return h('div', { key: item.device, style: styles.deviceRow },
+                        h('span', { style: { ...styles.dot, background: item.online ? '#34d399' : 'rgba(255,255,255,.25)' } }),
+                        h('span', { style: styles.deviceName }, item.device),
+                        h('span', { style: styles.hint },
+                          linked ? `已连接 ${String(tunnel.listen).replace('127.0.0.1:', ':')}` : item.online ? '在线' : '离线'),
+                        role === 'client'
+                          ? h('button', {
+                              style: { ...styles.button, marginLeft: 'auto' },
+                              disabled: busy,
+                              onClick: () => run(
+                                () => (linked ? post('/relay/tunnel/stop', { id: tunnel.id }) : post('/relay/tunnel/start', { device: item.device })),
+                                linked ? `已断开 ${item.device}` : `已连接 ${item.device}，可在下方主机列表里勾选工作区`,
+                              ),
+                            }, linked ? '断开' : '连接')
+                          : h('span', { style: { ...styles.hint, marginLeft: 'auto' } }, '（只有本地端可以连接）'))
+                    })))
+          : null,
 
         // 3. 远程主机与工作区
         h('div', { style: styles.card },
