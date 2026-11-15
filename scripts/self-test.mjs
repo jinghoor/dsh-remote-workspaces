@@ -268,6 +268,13 @@ try {
   const denied = await request(attackerPort, 'GET', '/', { headers: { host: `127.0.0.1:${mockPort}` } }).catch(() => ({ status: 0 }))
   check('跨账号连接受阻', denied.status === 0 || denied.status === 401, `HTTP ${denied.status}`)
 
+  // 流量统计：只有运营者能读，且确实记到了字节
+  const statsDenied = await relayApi(relayPort, 'GET', '/v1/admin/stats')
+  const stats = await relayApi(relayPort, 'GET', '/v1/admin/stats', undefined, { 'x-relay-secret': secret })
+  const aliceRow = (stats.json?.accounts ?? []).find((row) => row.username === 'alice')
+  check('流量统计仅运营者可见', statsDenied.status === 403, `无密钥 HTTP ${statsDenied.status}`)
+  check('流量按账号记账', aliceRow !== undefined && aliceRow.total > 0, aliceRow === undefined ? '没有 alice 的记录' : `${Math.round(aliceRow.total / 1024)} KB`)
+
   // 吊销：alice 的所有 token 立即失效，活动连接同时断开
   const revoked = await relayApi(relayPort, 'POST', '/v1/admin/revoke', { username: 'alice' }, { 'x-relay-secret': secret })
   check('吊销接口可用', revoked.json?.ok === true, `tokenVersion ${revoked.json?.tokenVersion} dropped ${revoked.json?.dropped}`)

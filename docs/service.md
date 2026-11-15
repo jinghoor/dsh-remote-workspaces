@@ -80,6 +80,29 @@ dsh-relay user remove --user NAME --secret <relay密钥>  # 连账号一起删
 单个中转进程实测：`RSS ≈ 65 MB`、`CPU ≈ 0.3%`、磁盘 160 KB（代码 + 账号库）。
 主要成本是带宽，不是机器。
 
+## 各账号流量统计
+
+中继会按账号累计双向字节，**只有运营者能读**（用 relay 自己的密钥，租户 token 一律 403）：
+
+```bash
+node dsh-relay.mjs stats --relay <你的中转> --secret <relay 密钥>
+```
+
+```
+账号                  设备    连接    上行        下行        合计        今日
+19195851916          1      1      38.1KB     1.8MB      1.8MB       1.8MB
+```
+
+- **上行** = 用户端 → 远端（发出去的消息、上传的图片/文件）
+- **下行** = 远端 → 用户端（拉取的会话记录、同步的图片）
+- 累计值每 30 秒落盘到 `/opt/dsh-relay/stats.json`（0600），重启不清零
+- `今日` 是当日 0 点起的计数，跨天自动重置
+
+接口是 `GET /v1/admin/stats`，与 `revoke` / `release` / `user-remove` 同一套鉴权（`x-relay-secret`）。
+租户侧没有任何入口能读到它——实测无密钥、错密钥、租户 token 冒充都是 403。
+
+配合配额使用：先看谁在跑量，再决定给谁调 `--max-links` 或直接 `revoke`。
+
 ## 上线检查清单
 
 ```bash

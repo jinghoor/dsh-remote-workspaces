@@ -42,6 +42,7 @@ function parseArgs(argv) {
     maxLinks: 16,
     registerPerHour: 5,
     noRegister: false,
+    stats: '/opt/dsh-relay/stats.json',
   }
   const numeric = new Set(['port', 'maxDevices', 'maxLinks', 'registerPerHour'])
   const flags = new Set(['noRegister'])
@@ -111,6 +112,66 @@ if (args.secret === '') {
 }
 
 const log = (...parts) => console.log(new Date().toISOString(), ...parts)
+
+/**
+ * Per-account traffic accounting.
+ *
+ * Only the operator can read it (admin secret); tenants never see another account's
+ * numbers, and nothing about it is exposed through the tenant API. Totals are flushed
+ * to disk so a restart does not reset the picture, and a daily bucket answers
+ * "who is heavy today".
+ */
+const statsFile = args.stats === '' ? '' : args.stats
+const traffic = new Map() // username → { toAgent, toClient, since }
+let trafficDay = new Date().toISOString().slice(0, 10)
+
+function accountOf(device) {
+  const key = String(device ?? '')
+  if (!key.startsWith('user:')) return undefined
+  const rest = key.slice('user:'.length)
+  const at = rest.indexOf('/')
+  return at === -1 ? rest : rest.slice(0, at)
+}
+
+function countTraffic(device, direction, bytes) {
+  const username = accountOf(device)
+  if (username === undefined || !Number.isFinite(bytes) || bytes <= 0) return
+  const today = new Date().toISOString().slice(0, 10)
+  if (today !== trafficDay) {
+    trafficDay = today
+    for (const entry of traffic.values()) entry.today = { toAgent: 0, toClient: 0 }
+  }
+  const entry = traffic.get(username) ?? { toAgent: 0, toClient: 0, today: { toAgent: 0, toClient: 0 }, since: Date.now() }
+  entry.today ??= { toAgent: 0, toClient: 0 }
+  if (direction === 'toAgent') { entry.toAgent += bytes; entry.today.toAgent += bytes }
+  else { entry.toClient += bytes; entry.today.toClient += bytes }
+  traffic.set(username, entry)
+}
+
+function loadTraffic() {
+  if (statsFile === '') return
+  try {
+    const parsed = JSON.parse(fs.readFileSync(statsFile, 'utf8'))
+    trafficDay = parsed.day ?? trafficDay
+    for (const [username, entry] of Object.entries(parsed.accounts ?? {})) traffic.set(username, entry)
+    log(`traffic stats loaded for ${traffic.size} account(s)`)
+  } catch {
+    // 第一次运行没有文件，正常。
+  }
+}
+
+function saveTraffic() {
+  if (statsFile === '') return
+  try {
+    fs.writeFileSync(
+      statsFile,
+      JSON.stringify({ day: trafficDay, updatedAt: new Date().toISOString(), accounts: Object.fromEntries(traffic) }, null, 2),
+      { mode: 0o600 },
+    )
+  } catch (error) {
+    log(`cannot write traffic stats: ${error.message}`)
+  }
+}
 const agents = new Map() // namespaced device key → { socket, streams: Map<streamId, clientConn> }
 const clients = new Set()
 const accounts = new AccountStore(args.users, args.state)
@@ -182,6 +243,7 @@ function dropAgent(device, reason) {
 function handleClientFrame(conn, type, streamId, payload) {
   if (type === PING) return send(conn, PONG, 0)
   if (type === PONG) return
+  if (type === DATA) countTraffic(conn.device, 'toAgent', payload.length)
   const record = agents.get(conn.device)
   if (type === OPEN) {
     if (record === undefined) {
@@ -207,6 +269,7 @@ function handleClientFrame(conn, type, streamId, payload) {
 
 function handleAgentFrame(device, type, streamId, payload) {
   if (type === PING) return
+  if (type === DATA) countTraffic(device, 'toClient', payload.length)
   const record = agents.get(device)
   if (record === undefined) return
   if (type === COOKIE) {
@@ -341,6 +404,28 @@ function serveApi(socket, method, pathname, headers, body) {
     const released = accounts.releaseDevice(device, typeof payload?.username === 'string' ? payload.username : undefined)
     log(`device ${device} ${released ? 'released' : 'was not claimed'}`)
     return httpReply(socket, 200, { ok: true, released })
+  }
+
+  if (pathname === '/v1/admin/stats' && method === 'GET') {
+    if ((headers['x-relay-secret'] ?? '') !== args.secret || args.secret === '') {
+      return httpReply(socket, 403, { ok: false, error: 'admin secret required' })
+    }
+    const rows = [...traffic.entries()].map(([username, entry]) => {
+      const live = [...clients].filter((conn) => String(conn.device).startsWith(`user:${username}/`)).length
+      const devices = accounts.devicesOf(username).length
+      return {
+        username,
+        devices,
+        liveLinks: live,
+        toAgent: entry.toAgent,
+        toClient: entry.toClient,
+        total: entry.toAgent + entry.toClient,
+        todayToAgent: entry.today?.toAgent ?? 0,
+        todayToClient: entry.today?.toClient ?? 0,
+        todayTotal: (entry.today?.toAgent ?? 0) + (entry.today?.toClient ?? 0),
+      }
+    }).sort((left, right) => right.total - left.total)
+    return httpReply(socket, 200, { ok: true, day: trafficDay, accounts: rows })
   }
 
   if (pathname === '/v1/admin/revoke' && method === 'POST') {
@@ -606,6 +691,15 @@ process.on('uncaughtException', (error) => {
 process.on('unhandledRejection', (error) => {
   log(`unhandled rejection: ${error?.stack ?? error}`)
 })
+
+loadTraffic()
+setInterval(saveTraffic, 30_000).unref()
+for (const signal of ['SIGTERM', 'SIGINT']) {
+  process.on(signal, () => {
+    saveTraffic()
+    process.exit(0)
+  })
+}
 
 server.listen(args.port, args.host, () => {
   log(`relay listening on ${args.host}:${args.port}`)

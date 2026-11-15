@@ -791,6 +791,7 @@ function usage() {
   dsh-relay release --device NAME --secret <relay 密钥>   # 解绑被占用的设备名
   dsh-relay user remove --user NAME --secret <relay 密钥>  # 删除账号（连带释放其设备）
   dsh-relay revoke --user NAME --secret <relay 密钥>       # 吊销该账号全部 token
+  dsh-relay stats --secret <relay 密钥>                    # 各账号流量（仅运营者可见）
 
 本机角色（登录后设置，之后可随时改）：
   dsh-relay setup                     交互选择「远端端」还是「本地端」
@@ -868,6 +869,37 @@ async function cmdRelease(options) {
   )
   if (answer.ok !== true) return console.error(`释放失败：${answer.error ?? `HTTP ${answer.status}`}`)
   console.log(answer.released === true ? `已解绑设备 ${options.device}` : `设备 ${options.device} 本来就没有绑定`)
+}
+
+async function cmdStats(options) {
+  if (options.secret === '') return console.error('stats: 需要 --secret（relay 的共享密钥）')
+  const answer = await relayHttp(
+    { ...options, token: '' },
+    'GET',
+    '/v1/admin/stats',
+    undefined,
+    { 'x-relay-secret': options.secret },
+  )
+  if (answer.ok !== true) return console.error(`查询失败：${answer.error ?? `HTTP ${answer.status}`}`)
+  const rows = answer.accounts ?? []
+  if (rows.length === 0) return console.log('还没有任何账号流量记录')
+  const human = (bytes) => {
+    const units = ['B', 'KB', 'MB', 'GB', 'TB']
+    let value = bytes
+    let unit = 0
+    while (value >= 1024 && unit < units.length - 1) { value /= 1024; unit += 1 }
+    return `${value.toFixed(value >= 100 || unit === 0 ? 0 : 1)}${units[unit]}`
+  }
+  const pad = (text, width) => String(text).padEnd(width)
+  console.log(`${pad('账号', 20)}${pad('设备', 6)}${pad('连接', 6)}${pad('上行', 10)}${pad('下行', 10)}${pad('合计', 10)}${pad('今日', 10)}`)
+  for (const row of rows) {
+    console.log(
+      pad(row.username, 20) + pad(row.devices, 6) + pad(row.liveLinks, 6) +
+      pad(human(row.toAgent), 10) + pad(human(row.toClient), 10) +
+      pad(human(row.total), 10) + pad(human(row.todayTotal), 10),
+    )
+  }
+  console.log(`\n统计日：${answer.day}（上行 = 用户端→远端，下行 = 远端→用户端）`)
 }
 
 async function cmdRevoke(options) {
@@ -994,6 +1026,8 @@ if (command === 'register') {
   await cmdDevices(options)
 } else if (command === 'release') {
   await cmdRelease(options)
+} else if (command === 'stats') {
+  await cmdStats(options)
 } else if (command === 'revoke') {
   await cmdRevoke(options)
 } else if (command === 'user') {
