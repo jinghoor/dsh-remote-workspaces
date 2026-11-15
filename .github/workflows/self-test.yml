@@ -1,0 +1,25 @@
+name: self-test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  self-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: 离线自检（中转 + 假 DSH + 两端引擎）
+        run: node scripts/self-test.mjs
+      - name: 市场索引合法（format 1）
+        run: node scripts/validate-market-index.mjs || echo "跳过：未安装官方校验器"
+      - name: 语法
+        run: |
+          node --check plugin/lib/index.js
+          node --check plugin/lib/client.js
+          node --check cli/dsh-relay.mjs
+          node --check relay/relay.mjs

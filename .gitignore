@@ -1,0 +1,12 @@
+node_modules/
+dist/
+*.tgz
+.work/
+screenshots/
+*.bak-*
+.DS_Store
+
+# 运维实况（含中转密钥与指纹），不随仓库发布
+relay/DEPLOYED.md
+scripts/switch-account.sh
+market/index.local.json

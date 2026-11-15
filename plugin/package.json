@@ -1,0 +1,54 @@
+{
+  "name": "dsh-remote-workspaces",
+  "version": "1.0.0",
+  "description": "把另一台电脑上的 DSH 工作区与会话并进本机侧边栏，自带账号、端到端隧道和设置页。",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "client": {
+      "inject": [],
+      "platform": "web"
+    }
+  },
+  "files": [
+    "lib/index.js",
+    "lib/client.js",
+    "lib/remote.mjs",
+    "lib/ws.mjs",
+    "lib/config.mjs",
+    "lib/tunnel.mjs",
+    "lib/dsh-relay.mjs",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "dsh": ">=0.2.1"
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "remote",
+    "tunnel",
+    "relay",
+    "remote-workspaces",
+    "plugin"
+  ],
+  "license": "MIT",
+  "author": "dsh-remote-workspaces authors",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jinghoor/dsh-remote-workspaces"
+  },
+  "homepage": "https://github.com/jinghoor/dsh-remote-workspaces#readme",
+  "bugs": {
+    "url": "https://github.com/jinghoor/dsh-remote-workspaces/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

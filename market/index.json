@@ -1,0 +1,81 @@
+{
+  "format": 1,
+  "title": {
+    "en": "DSH Remote Workspaces",
+    "zh": "DSH 远程工作区"
+  },
+  "description": {
+    "en": "Bring another computer's DSH workspaces and sessions into this sidebar, with accounts, an outbound tunnel and a settings panel.",
+    "zh": "把另一台电脑上的 DSH 工作区与会话并进本机侧边栏，自带账号、主动外连隧道和设置页。"
+  },
+  "metadata": {
+    "categories": {
+      "remote": {
+        "title": {
+          "en": "Remote access",
+          "zh": "远程接入"
+        }
+      }
+    },
+    "labels": {
+      "tunnel": {
+        "title": {
+          "en": "Tunnel",
+          "zh": "隧道"
+        }
+      }
+    },
+    "sortKeys": {
+      "stars": {
+        "title": {
+          "en": "Stars",
+          "zh": "星标"
+        },
+        "order": "desc"
+      }
+    }
+  },
+  "plugins": [
+    {
+      "name": "dsh-remote-workspaces",
+      "title": {
+        "en": "Remote Workspaces",
+        "zh": "远程工作区"
+      },
+      "description": {
+        "en": "Another computer's workspaces appear in the same sidebar tree, marked with a globe. Sessions run there, the transcript and queue stay in sync here.",
+        "zh": "另一台电脑的工作区会并进同一棵侧边栏树，带地球标记。会话在那台机器上执行，记录与队列在这边同步。"
+      },
+      "author": "dsh-remote-workspaces authors",
+      "homepage": "https://github.com/jinghoor/dsh-remote-workspaces#readme",
+      "repository": {
+        "url": "https://github.com/jinghoor/dsh-remote-workspaces"
+      },
+      "metadata": {
+        "category": "remote",
+        "keywords": [
+          "remote",
+          "tunnel",
+          "relay",
+          "workspaces",
+          "sessions"
+        ],
+        "labels": [
+          "tunnel"
+        ]
+      },
+      "versions": [
+        {
+          "version": "1.0.0",
+          "publishTimestamp": 1794700000,
+          "source": {
+            "type": "npm"
+          },
+          "engines": {
+            "dsh": ">=0.2.1"
+          }
+        }
+      ]
+    }
+  ]
+}
