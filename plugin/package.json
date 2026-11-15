@@ -1,6 +1,6 @@
 {
   "name": "dsh-remote-workspaces",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "description": "把另一台电脑上的 DSH 工作区与会话并进本机侧边栏，自带账号、端到端隧道和设置页。",
   "type": "module",
   "main": "lib/index.js",

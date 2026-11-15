@@ -72,11 +72,29 @@ window.__ModuleLoader__.load({
       error: { padding: '10px 20px', color: '#f87171', fontSize: 12, whiteSpace: 'pre-wrap' },
       ok: { padding: '0 20px 12px', color: '#6ee7a8', fontSize: 12 },
       foot: { fontSize: 11.5, opacity: 0.45, padding: '0 2px' },
-      link: {
+      about: { padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 10 },
+      aboutTop: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'nowrap' },
+      aboutTitle: { fontSize: 15, fontWeight: 600, whiteSpace: 'nowrap' },
+      versionChip: {
+        fontSize: 11,
+        lineHeight: '18px',
+        padding: '0 7px',
+        borderRadius: 999,
+        background: 'var(--dsh-surface-sunken, rgba(255,255,255,.06))',
+        color: 'var(--dsh-text-secondary, rgba(255,255,255,.62))',
+        fontVariantNumeric: 'tabular-nums',
+        whiteSpace: 'nowrap',
+      },
+      aboutLinks: { display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap' },
+      aboutItem: {
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 6,
         fontSize: 12.5,
-        color: 'var(--dsh-link, #60a5fa)',
+        color: 'var(--dsh-link, #6aa9ff)',
         textDecoration: 'none',
         cursor: 'pointer',
+        whiteSpace: 'nowrap',
       },
       row: { display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap', marginTop: 10 },
       field: { display: 'flex', flexDirection: 'column', gap: 5, minWidth: 140 },
@@ -113,6 +131,23 @@ window.__ModuleLoader__.load({
       const body = await res.json().catch(() => null)
       if (!res.ok || body?.ok !== true) throw new Error(body?.error ?? `HTTP ${res.status}`)
       return body.value
+    }
+
+    /** 顶部「关于」用的三个 16px 图标：GitHub 标记、信封、聊天气泡。 */
+    function IconGithub(props) {
+      return h('svg', { width: props?.size ?? 15, height: props?.size ?? 15, viewBox: '0 0 16 16', fill: 'currentColor', 'aria-hidden': 'true', style: { flex: '0 0 auto' } },
+        h('path', { d: 'M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.5 7.5 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z' }))
+    }
+
+    function IconMail(props) {
+      return h('svg', { width: props?.size ?? 15, height: props?.size ?? 15, viewBox: '0 0 16 16', fill: 'none', stroke: 'currentColor', strokeWidth: 1.4, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': 'true', style: { flex: '0 0 auto' } },
+        h('rect', { x: 1.5, y: 3.2, width: 13, height: 9.6, rx: 2 }),
+        h('path', { d: 'M2.4 4.6 8 8.6l5.6-4' }))
+    }
+
+    function IconChat(props) {
+      return h('svg', { width: props?.size ?? 15, height: props?.size ?? 15, viewBox: '0 0 16 16', fill: 'none', stroke: 'currentColor', strokeWidth: 1.4, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': 'true', style: { flex: '0 0 auto' } },
+        h('path', { d: 'M2 4.2A2.2 2.2 0 0 1 4.2 2h7.6A2.2 2.2 0 0 1 14 4.2v4.4a2.2 2.2 0 0 1-2.2 2.2H7.4L4 13.4V10.8h-.2A1.8 1.8 0 0 1 2 9V4.2z' }))
     }
 
     function Check(props) {
@@ -384,19 +419,23 @@ window.__ModuleLoader__.load({
 
         // 0. 关于：版本与联系方式，放在最顶部方便复制/反馈
         h('div', { style: styles.card },
-          h('div', { style: styles.headRow },
-            h('span', { style: styles.cardTitle }, PROJECT.name),
-            h('span', { style: { ...styles.hint, marginLeft: 8 } }, `v${status?.version ?? '…'}`),
-            h('span', { style: { marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' } },
+          h('div', { style: styles.about },
+            h('div', { style: styles.aboutTop },
+              h('span', { style: styles.aboutTitle }, PROJECT.name),
+              h('span', { style: styles.versionChip }, `v${status?.version ?? '…'}`)),
+            h('div', { style: styles.aboutLinks },
               h('a', {
-                style: styles.link,
+                style: styles.aboutItem,
                 href: PROJECT.repo,
                 target: '_blank',
                 rel: 'noreferrer',
+                title: PROJECT.repo,
                 onClick: (event) => { event.preventDefault(); window.open(PROJECT.repo, '_blank', 'noopener') },
-              }, 'GitHub'),
-              h('a', { style: styles.link, href: `mailto:${PROJECT.mail}` }, PROJECT.mail),
-              h('span', { style: styles.hint }, `${PROJECT.qqName} ${PROJECT.qq}`),
+              }, h(IconGithub, { size: 15 }), h('span', null, 'GitHub')),
+              h('a', { style: styles.aboutItem, href: `mailto:${PROJECT.mail}`, title: `邮件联系 ${PROJECT.mail}` },
+                h(IconMail, { size: 15 }), h('span', null, PROJECT.mail)),
+              h('span', { style: styles.aboutItem, title: `${PROJECT.qqName} ${PROJECT.qq}` },
+                h(IconChat, { size: 15 }), h('span', null, `${PROJECT.qqName} ${PROJECT.qq}`)),
             )),
         ),
 
