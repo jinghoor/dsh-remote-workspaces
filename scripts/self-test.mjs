@@ -274,6 +274,9 @@ try {
   const aliceRow = (stats.json?.accounts ?? []).find((row) => row.username === 'alice')
   check('流量统计仅运营者可见', statsDenied.status === 403, `无密钥 HTTP ${statsDenied.status}`)
   check('流量按账号记账', aliceRow !== undefined && aliceRow.total > 0, aliceRow === undefined ? '没有 alice 的记录' : `${Math.round(aliceRow.total / 1024)} KB`)
+  const hourly = await relayApi(relayPort, 'GET', '/v1/admin/stats?hours=3&account=alice', undefined, { 'x-relay-secret': secret })
+  const series = hourly.json?.accounts?.[0]?.hourly ?? []
+  check('小时分桶可用', series.length === 3 && series.some((item) => item.total > 0), `${series.length} 个桶，峰值 ${Math.max(0, ...series.map((i) => i.total))} B`)
 
   // 吊销：alice 的所有 token 立即失效，活动连接同时断开
   const revoked = await relayApi(relayPort, 'POST', '/v1/admin/revoke', { username: 'alice' }, { 'x-relay-secret': secret })

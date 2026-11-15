@@ -133,6 +133,31 @@ function accountOf(device) {
   return at === -1 ? rest : rest.slice(0, at)
 }
 
+const HOUR_MS = 60 * 60 * 1000
+/** 保留最近多少小时的分桶；更早的丢弃，避免 stats.json 无限增长。 */
+const HOURLY_KEEP = 72
+
+function hourKey(timestamp = Date.now()) {
+  return new Date(timestamp).toISOString().slice(0, 13) // YYYY-MM-DDTHH (UTC)
+}
+
+function pruneHourly(hourly, now = Date.now()) {
+  const cutoff = hourKey(now - HOURLY_KEEP * HOUR_MS)
+  for (const key of Object.keys(hourly)) if (key < cutoff) delete hourly[key]
+}
+
+/** @returns the per-hour series of one account, oldest first. */
+function hourlySeries(hourly, hours) {
+  const now = Date.now()
+  const series = []
+  for (let offset = hours - 1; offset >= 0; offset -= 1) {
+    const key = hourKey(now - offset * HOUR_MS)
+    const bucket = hourly[key] ?? { toAgent: 0, toClient: 0 }
+    series.push({ hour: key, toAgent: bucket.toAgent, toClient: bucket.toClient, total: bucket.toAgent + bucket.toClient })
+  }
+  return series
+}
+
 function countTraffic(device, direction, bytes) {
   const username = accountOf(device)
   if (username === undefined || !Number.isFinite(bytes) || bytes <= 0) return
@@ -141,10 +166,26 @@ function countTraffic(device, direction, bytes) {
     trafficDay = today
     for (const entry of traffic.values()) entry.today = { toAgent: 0, toClient: 0 }
   }
-  const entry = traffic.get(username) ?? { toAgent: 0, toClient: 0, today: { toAgent: 0, toClient: 0 }, since: Date.now() }
+  const entry = traffic.get(username) ?? { toAgent: 0, toClient: 0, today: { toAgent: 0, toClient: 0 }, hourly: {}, since: Date.now() }
   entry.today ??= { toAgent: 0, toClient: 0 }
-  if (direction === 'toAgent') { entry.toAgent += bytes; entry.today.toAgent += bytes }
-  else { entry.toClient += bytes; entry.today.toClient += bytes }
+  entry.hourly ??= {}
+  const key = hourKey()
+  const bucket = entry.hourly[key] ?? { toAgent: 0, toClient: 0 }
+  if (direction === 'toAgent') {
+    entry.toAgent += bytes
+    entry.today.toAgent += bytes
+    bucket.toAgent += bytes
+  } else {
+    entry.toClient += bytes
+    entry.today.toClient += bytes
+    bucket.toClient += bytes
+  }
+  entry.hourly[key] = bucket
+  // 每小时最多清一次，够用且不会在热路径上反复遍历。
+  if (entry.prunedHour !== key) {
+    entry.prunedHour = key
+    pruneHourly(entry.hourly)
+  }
   traffic.set(username, entry)
 }
 
@@ -342,7 +383,10 @@ function noteLoginFailure(key) {
   entry.count += 1
 }
 
-function serveApi(socket, method, pathname, headers, body) {
+function serveApi(socket, method, rawPath, headers, body) {
+  // Request lines carry the query string; every route below compares bare paths.
+  const [pathname, queryText = ''] = String(rawPath).split('?')
+  const query = new URLSearchParams(queryText)
   const json = () => {
     try {
       return body === '' ? {} : JSON.parse(body)
@@ -410,7 +454,11 @@ function serveApi(socket, method, pathname, headers, body) {
     if ((headers['x-relay-secret'] ?? '') !== args.secret || args.secret === '') {
       return httpReply(socket, 403, { ok: false, error: 'admin secret required' })
     }
-    const rows = [...traffic.entries()].map(([username, entry]) => {
+    const wantedHours = Math.min(Math.max(Number(query.get('hours') ?? '0') || 0, 0), HOURLY_KEEP)
+    const onlyAccount = query.get('account') ?? ''
+    const rows = [...traffic.entries()]
+      .filter(([username]) => onlyAccount === '' || username === onlyAccount)
+      .map(([username, entry]) => {
       const live = [...clients].filter((conn) => String(conn.device).startsWith(`user:${username}/`)).length
       const devices = accounts.devicesOf(username).length
       return {
@@ -423,9 +471,10 @@ function serveApi(socket, method, pathname, headers, body) {
         todayToAgent: entry.today?.toAgent ?? 0,
         todayToClient: entry.today?.toClient ?? 0,
         todayTotal: (entry.today?.toAgent ?? 0) + (entry.today?.toClient ?? 0),
+        ...(wantedHours === 0 ? {} : { hourly: hourlySeries(entry.hourly ?? {}, wantedHours) }),
       }
     }).sort((left, right) => right.total - left.total)
-    return httpReply(socket, 200, { ok: true, day: trafficDay, accounts: rows })
+    return httpReply(socket, 200, { ok: true, day: trafficDay, hours: wantedHours, accounts: rows })
   }
 
   if (pathname === '/v1/admin/revoke' && method === 'POST') {

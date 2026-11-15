@@ -98,7 +98,21 @@ node dsh-relay.mjs stats --relay <你的中转> --secret <relay 密钥>
 - 累计值每 30 秒落盘到 `/opt/dsh-relay/stats.json`（0600），重启不清零
 - `今日` 是当日 0 点起的计数，跨天自动重置
 
-接口是 `GET /v1/admin/stats`，与 `revoke` / `release` / `user-remove` 同一套鉴权（`x-relay-secret`）。
+按小时分桶保留最近 **72 小时**，看某个账号的曲线：
+
+```bash
+node dsh-relay.mjs stats --secret <密钥> --user NAME --hours 24
+```
+
+```
+19195851916 最近 6 小时：
+  2026-11-15 15:00
+  2026-11-15 16:00  ██████████████████████████████ 923KB
+```
+
+存储用 UTC 小时键，展示自动换成本机时间。超过 72 小时的桶会被丢弃，`stats.json` 不会无限增长。
+
+接口是 `GET /v1/admin/stats[?hours=24&account=NAME]`，与 `revoke` / `release` / `user-remove` 同一套鉴权（`x-relay-secret`）。
 租户侧没有任何入口能读到它——实测无密钥、错密钥、租户 token 冒充都是 403。
 
 配合配额使用：先看谁在跑量，再决定给谁调 `--max-links` 或直接 `revoke`。

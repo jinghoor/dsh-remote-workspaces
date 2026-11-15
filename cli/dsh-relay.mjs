@@ -134,6 +134,7 @@ function parseArgs(argv) {
     token: '',
     user: '',
     password: '',
+    hours: '',
   }
   for (let i = 1; i < argv.length; i += 2) {
     // --token-file → tokenFile, --host-id → hostId
@@ -792,6 +793,7 @@ function usage() {
   dsh-relay user remove --user NAME --secret <relay 密钥>  # 删除账号（连带释放其设备）
   dsh-relay revoke --user NAME --secret <relay 密钥>       # 吊销该账号全部 token
   dsh-relay stats --secret <relay 密钥>                    # 各账号流量（仅运营者可见）
+  dsh-relay stats --secret <密钥> --user NAME --hours 24    # 某账号最近 24 小时曲线
 
 本机角色（登录后设置，之后可随时改）：
   dsh-relay setup                     交互选择「远端端」还是「本地端」
@@ -873,10 +875,15 @@ async function cmdRelease(options) {
 
 async function cmdStats(options) {
   if (options.secret === '') return console.error('stats: 需要 --secret（relay 的共享密钥）')
+  const hours = Number(options.hours ?? 0) || 0
+  const query = new URLSearchParams()
+  if (hours > 0) query.set('hours', String(hours))
+  if (options.user !== '') query.set('account', options.user)
+  const pathname = `/v1/admin/stats${query.toString() === '' ? '' : `?${query.toString()}`}`
   const answer = await relayHttp(
     { ...options, token: '' },
     'GET',
-    '/v1/admin/stats',
+    pathname,
     undefined,
     { 'x-relay-secret': options.secret },
   )
@@ -900,6 +907,22 @@ async function cmdStats(options) {
     )
   }
   console.log(`\n统计日：${answer.day}（上行 = 用户端→远端，下行 = 远端→用户端）`)
+
+  if (hours > 0) {
+    for (const row of rows) {
+      const series = row.hourly ?? []
+      const peak = Math.max(1, ...series.map((item) => item.total))
+      console.log(`\n${row.username} 最近 ${hours} 小时：`)
+      for (const item of series) {
+        const barLength = Math.round((item.total / peak) * 30)
+        const bar = item.total === 0 ? '' : `${'█'.repeat(Math.max(barLength, 1))} ${human(item.total)}`
+        // 存储用 UTC 小时键，展示换成本机时间，避免运营者自己换算。
+        const local = new Date(`${item.hour}:00:00Z`)
+        const stamp = `${local.getFullYear()}-${String(local.getMonth() + 1).padStart(2, '0')}-${String(local.getDate()).padStart(2, '0')} ${String(local.getHours()).padStart(2, '0')}:00`
+        console.log(`  ${stamp}  ${bar}`)
+      }
+    }
+  }
 }
 
 async function cmdRevoke(options) {
