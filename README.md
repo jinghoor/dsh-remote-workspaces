@@ -3,7 +3,10 @@
 把另一台电脑上的 DSH 工作区与会话并进本机侧边栏：带 🌐 标记，会话在那台执行，记录与队列在这边同步。
 自带账号体系、主动外连隧道和图形设置页。
 
-MIT License · 插件包 `dsh-remote-workspaces` · DSH ≥ 0.2.1
+MIT License · 插件包 `dsh-remote-workspaces` · DSH ≥ 0.2.1-0
+
+**装完就能用**：插件内置了公共中转地址，注册账号 → 两台设备登录同一账号 → 连上。
+自建中转见 [docs/service.md](docs/service.md)。
 
 远端只需要跑 DSH 本身 + 一个几十 KB 的 agent：**不用装插件、不用开端口**，两端都主动外连中转。
 

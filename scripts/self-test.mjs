@@ -164,6 +164,7 @@ try {
     '--cert', cert, '--key', key, '--secret', secret,
     '--users', path.join(WORK, 'users.json'), '--state', path.join(WORK, 'token.key'),
     '--cli', path.join(REPO, 'cli/dsh-relay.mjs'), '--dist', path.join(WORK, 'dist'),
+    '--max-devices', '2', '--max-links', '4', '--register-per-hour', '3',
   ], { stdio: ['ignore', 'pipe', 'pipe'] })
   children.push(relay)
   await sleep(600)
@@ -237,6 +238,27 @@ try {
     console.log('  [client log]', clientA.log.join('').split('\n').slice(-6).join(' | '))
     console.log('  [agent log ]', agentA.log.join('').split('\n').slice(-6).join(' | '))
   }
+
+  // 注册限速：本机中转限制每小时 3 个，第 4 个应被拒
+  const thirdOk = await relayApi(relayPort, 'POST', '/v1/register', { username: 'carol', password: 'carol-password-1' })
+  const fourth = await relayApi(relayPort, 'POST', '/v1/register', { username: 'dave', password: 'dave-password-1' })
+  check('注册限速生效', thirdOk.json?.ok === true && fourth.status === 429, `第4个 HTTP ${fourth.status}`)
+
+  // 设备配额：carol 上限 2 台
+  writeConfig(homeB, { relay: relayHost, token: thirdOk.json.token, role: 'agent', device: 'c1', local: `127.0.0.1:${mockPort}` })
+  const carol1 = runEngine(['start'], homeB)
+  children.push(carol1.child)
+  await sleep(1500)
+  writeConfig(homeB, { device: 'c2' })
+  const carol2 = runEngine(['start'], homeB)
+  children.push(carol2.child)
+  await sleep(1500)
+  writeConfig(homeB, { device: 'c3' })
+  const carol3 = runEngine(['start'], homeB)
+  children.push(carol3.child)
+  await sleep(2000)
+  check('设备配额生效', carol3.log.join('').includes('link dropped') || !carol3.log.join('').includes('agent connected'),
+    '第三台设备被拒')
 
   // 跨账号：bob 连 alice 的设备必须被拒
   writeConfig(homeB, { relay: relayHost, token: tokenB, role: 'client', device: 'desk', listen: `127.0.0.1:${attackerPort}` })

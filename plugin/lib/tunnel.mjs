@@ -15,6 +15,7 @@ import net from 'node:net'
 import tls from 'node:tls'
 import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
+import { DEFAULT_RELAY, DEFAULT_FINGERPRINT } from './defaults.mjs'
 
 const ENGINE = fileURLToPath(new URL('./dsh-relay.mjs', import.meta.url))
 const CONFIG_FILE = path.join(os.homedir(), '.dsh-relay', 'config.json')
@@ -23,12 +24,23 @@ const LOG_LIMIT = 60
 // pidfile is how the next instance finds (and replaces) it.
 const PIDFILE = path.join(os.homedir(), '.dsh-relay', 'tunnel.pid')
 
-/** @returns the parsed config, or an empty object when none exists yet. */
+/**
+ * @returns the stored config with the public relay filled in, so a fresh install can
+ * register and connect without the user typing an address.
+ */
 export function readRelayConfig() {
+  let stored = {}
   try {
-    return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'))
+    // PowerShell / 记事本 写出的文件可能带 BOM。
+    stored = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8').replace(/^\uFEFF/u, ''))
   } catch {
-    return {}
+    stored = {}
+  }
+  return {
+    relay: DEFAULT_RELAY,
+    fingerprint: DEFAULT_FINGERPRINT,
+    ...stored,
+    ...(typeof stored.relay === 'string' && stored.relay !== '' ? {} : { relay: DEFAULT_RELAY }),
   }
 }
 

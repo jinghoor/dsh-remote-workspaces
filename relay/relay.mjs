@@ -37,11 +37,27 @@ function parseArgs(argv) {
     dist: '/opt/dsh-relay/dist',
     users: '/opt/dsh-relay/users.json',
     state: '/opt/dsh-relay/token.key',
+    // 公共服务配额：按账号限制，防止单个账号占满中转。
+    maxDevices: 8,
+    maxLinks: 16,
+    registerPerHour: 5,
+    noRegister: false,
   }
-  for (let i = 0; i < argv.length; i += 2) {
-    const key = argv[i].replace(/^--/, '')
+  const numeric = new Set(['port', 'maxDevices', 'maxLinks', 'registerPerHour'])
+  const flags = new Set(['noRegister'])
+  const toCamel = (key) => key.replace(/-([a-z])/g, (_, c) => c.toUpperCase())
+  for (let i = 0; i < argv.length; i++) {
+    const raw = argv[i]
+    if (!raw.startsWith('--')) continue
+    const key = toCamel(raw.slice(2))
+    if (flags.has(key)) {
+      out[key] = true
+      continue
+    }
+    if (!(key in out)) continue
     const value = argv[i + 1]
-    if (key in out) out[key] = key === 'port' ? Number(value) : value
+    i += 1
+    out[key] = numeric.has(key) ? Number(value) : value
   }
   return out
 }
@@ -231,6 +247,20 @@ function httpReply(socket, status, payload) {
  * account is enough for a human and useless for a brute-force run.
  */
 const loginFailures = new Map()
+/** 公共服务的注册闸门：同一来源每小时最多注册几个账号。 */
+const registerBuckets = new Map()
+function registerAllowed(remoteAddress, limit) {
+  const key = remoteAddress ?? '?'
+  const now = Date.now()
+  const bucket = registerBuckets.get(key)
+  if (bucket === undefined || now - bucket.firstAt > 60 * 60 * 1000) {
+    registerBuckets.set(key, { count: 1, firstAt: now })
+    return true
+  }
+  if (bucket.count >= limit) return false
+  bucket.count += 1
+  return true
+}
 function loginBlocked(key) {
   const entry = loginFailures.get(key)
   if (entry === undefined) return false
@@ -266,9 +296,14 @@ function serveApi(socket, method, pathname, headers, body) {
   if (pathname === '/v1/register' && method === 'POST') {
     const payload = json()
     if (payload === undefined) return httpReply(socket, 400, { ok: false, error: 'body must be JSON' })
+    if (args.noRegister === true) return httpReply(socket, 403, { ok: false, error: 'registration is closed on this relay' })
+    if (!registerAllowed(socket.remoteAddress, args.registerPerHour)) {
+      log(`register throttled for ${socket.remoteAddress ?? '?'}`)
+      return httpReply(socket, 429, { ok: false, error: '注册过于频繁，请一小时后再试' })
+    }
     try {
       const issued = accounts.register(String(payload.username ?? ''), String(payload.password ?? ''))
-      log(`account registered: ${issued.username}`)
+      log(`account registered: ${issued.username} from ${socket.remoteAddress ?? '?'}`)
       return httpReply(socket, 200, { ok: true, ...issued })
     } catch (error) {
       return httpReply(socket, 400, { ok: false, error: String(error.message ?? error) })
@@ -286,7 +321,7 @@ function serveApi(socket, method, pathname, headers, body) {
     try {
       const issued = accounts.login(String(payload.username ?? ''), String(payload.password ?? ''))
       loginFailures.delete(throttleKey)
-      log(`account login: ${issued.username}`)
+      log(`account login: ${issued.username} from ${socket.remoteAddress ?? '?'}`)
       return httpReply(socket, 200, { ok: true, ...issued })
     } catch (error) {
       noteLoginFailure(throttleKey)
@@ -446,6 +481,14 @@ const server = tls.createServer({ cert: fs.readFileSync(args.cert), key: fs.read
 
     if (parsed.role === 'agent') {
       // Names are scoped per account, so claiming can never collide with another tenant.
+      if (username !== undefined && accounts.devicesOf(username).length >= args.maxDevices) {
+        const known = accounts.devicesOf(username).some((item) => item.device === device)
+        if (!known) {
+          log(`agent ${device} rejected: account ${username} reached ${args.maxDevices} devices`)
+          socket.end(encodeFrame(CLOSE, 0))
+          return
+        }
+      }
       if (username !== undefined && accounts.claimDevice(username, device) !== true) {
         log(`agent ${device} rejected: invalid device name`)
         socket.end(encodeFrame(CLOSE, 0))
@@ -457,12 +500,20 @@ const server = tls.createServer({ cert: fs.readFileSync(args.cert), key: fs.read
       agents.set(key, record)
       notifyClients(key, AGENT_ONLINE)
       greeted = true
-      log(`agent online: ${username === undefined ? device : `${username}/${device}`}`)
+      log(`agent online: ${username === undefined ? device : `${username}/${device}`} from ${socket.remoteAddress ?? '?'}`)
       dispatch = (frameType, frameStream, framePayload) => handleAgentFrame(key, frameType, frameStream, framePayload)
       return
     }
 
     if (parsed.role === 'client') {
+      if (username !== undefined) {
+        const live = [...clients].filter((item) => String(item.device).startsWith(`user:${username}/`)).length
+        if (live >= args.maxLinks) {
+          log(`client for ${device} rejected: account ${username} reached ${args.maxLinks} links`)
+          socket.end(encodeFrame(CLOSE, 0))
+          return
+        }
+      }
       if (username !== undefined && accounts.ownsDevice(username, device) !== true) {
         log(`client for ${device} rejected: ${username} never used that device`)
         socket.end(encodeFrame(CLOSE, 0))
