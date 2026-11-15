@@ -81,17 +81,24 @@ node dsh-relay.mjs agent --relay <服务器>:19090 \
 远端 DSH 本身（桌面版直接开即可；用 CLI 时要带 `--trusted-host`，见
 [relay/README.md](relay/README.md)）。
 
-### 3. 从插件市场安装（分发用）
+### 3. 安装插件（最终用户只需要这一步）
 
-仓库自带一份可直接交付的市场索引 [market/index.json](market/index.json)（format 1），
-已用官方校验器验证：
+DSH → **设置 → 插件 → 添加插件**，粘贴这个地址，点安装，然后重启 DSH：
 
-```bash
-npm publish plugin/                      # 发到 npm（包名 dsh-remote-workspaces）
-node scripts/validate-market-index.mjs   # 校验索引
+```
+https://github.com/jinghoor/dsh-remote-workspaces/releases/download/v1.3.0/dsh-remote-workspaces-1.1.2.tgz
 ```
 
-完整步骤见 [docs/publishing.md](docs/publishing.md)。
+> 这个框接受的是**安装包地址**（tarball / git 仓库 / npm 包名），不是市场索引。
+> 装完重启 DSH，设置里会出现「DSH远程客户端」。
+
+如果你的 DSH 启用了插件市场，也可以添加索引源：
+
+```
+https://raw.githubusercontent.com/jinghoor/dsh-remote-workspaces/main/market/index.json
+```
+
+发布新版本见 [docs/publishing.md](docs/publishing.md)。
 
 ### 4. 账号模式（推荐，多人各自隔离）
 

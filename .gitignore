@@ -10,3 +10,4 @@ screenshots/
 relay/DEPLOYED.md
 scripts/switch-account.sh
 market/index.local.json
+plugin/*.tgz
