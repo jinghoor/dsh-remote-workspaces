@@ -67,9 +67,12 @@
       "versions": [
         {
           "version": "1.0.0",
-          "publishTimestamp": 1794700000,
+          "publishTimestamp": 1794729182,
           "source": {
-            "type": "npm"
+            "type": "git",
+            "url": "https://github.com/jinghoor/dsh-remote-workspaces",
+            "commit": "1dc398121545748749df337be8bfa8721c701e75",
+            "path": "plugin"
           },
           "engines": {
             "dsh": ">=0.2.1"
