@@ -15,7 +15,7 @@ import net from 'node:net'
 import os from 'node:os'
 import path from 'node:path'
 import tls from 'node:tls'
-import { spawn } from 'node:child_process'
+import { spawn, execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { DEFAULT_RELAY, DEFAULT_FINGERPRINT } from './defaults.mjs'
 
@@ -120,6 +120,54 @@ export async function findFreePort(from = 52901) {
     if (free) return port
   }
   throw new Error('找不到空闲端口')
+}
+
+/**
+ * A previous DSH instance can leave its engine running on the tunnel port: the host dies,
+ * the child does not, and the pid record is gone. Starting a new engine then fails with
+ * EADDRINUSE while the panel still says "not running". Find that listener and reap it —
+ * but only when its command line is our own engine.
+ */
+function findListenerPid(port) {
+  try {
+    if (process.platform === 'win32') {
+      const out = execFileSync('netstat', ['-ano', '-p', 'tcp'], { encoding: 'utf8' })
+      for (const line of out.split('\n')) {
+        if (!line.includes(`:${port} `) || !line.includes('LISTENING')) continue
+        const parts = line.trim().split(/\s+/)
+        const pid = Number(parts.at(-1))
+        if (Number.isFinite(pid) && pid > 0) return pid
+      }
+      return undefined
+    }
+    const out = execFileSync('lsof', ['-nP', `-iTCP:${port}`, '-sTCP:LISTEN', '-t'], { encoding: 'utf8' })
+    const pid = Number(out.trim().split('\n')[0])
+    return Number.isFinite(pid) && pid > 0 ? pid : undefined
+  } catch {
+    return undefined
+  }
+}
+
+function commandOf(pid) {
+  try {
+    if (process.platform === 'win32') {
+      const out = execFileSync('wmic', ['process', 'where', `ProcessId=${pid}`, 'get', 'CommandLine', '/value'], { encoding: 'utf8' })
+      return out
+    }
+    return execFileSync('ps', ['-o', 'command=', '-p', String(pid)], { encoding: 'utf8' })
+  } catch {
+    return ''
+  }
+}
+
+/** @returns whether a stale engine was reaped, so the caller can report it. */
+function reapStaleEngine(port) {
+  const pid = findListenerPid(port)
+  if (pid === undefined || pid === process.pid) return false
+  const command = commandOf(pid)
+  if (!command.includes('dsh-relay.mjs')) return false
+  killPid(pid)
+  return true
 }
 
 function readPids() {
@@ -235,6 +283,11 @@ export class TunnelSupervisor {
 
     const stale = readPids().primary
     if (alive(stale)) killPid(stale)
+    const port = Number(String(merged.listen ?? '').split(':')[1])
+    if (Number.isFinite(port) && reapStaleEngine(port)) {
+      // 等端口释放，否则新进程还是 EADDRINUSE
+      await new Promise((resolve) => setTimeout(resolve, 800))
+    }
     const running = this.#tunnels.get('primary')
     if (running?.child !== undefined && running.child.exitCode === null) return { ok: true, already: true }
 
@@ -253,6 +306,7 @@ export class TunnelSupervisor {
     const existing = this.#tunnels.get(id)
     if (existing?.child !== undefined && existing.child.exitCode === null) return { ok: true, already: true, id, listen: existing.listen }
     const port = listen ?? (await findFreePort())
+    if (reapStaleEngine(port)) await new Promise((resolve) => setTimeout(resolve, 800))
     const extraArgs = [
       '--device', String(device),
       '--listen', `127.0.0.1:${port}`,

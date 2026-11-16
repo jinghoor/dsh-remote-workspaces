@@ -22,6 +22,20 @@ fi
 [ -d "$PROFILE" ] || { echo "profile 不存在: $PROFILE" >&2; ls -1 "$HOME/.dsh/profiles" 2>/dev/null >&2; exit 1; }
 [ -f "$SRC/lib/index.js" ] || { echo "找不到插件源码: $SRC" >&2; exit 1; }
 
+# 插件管理器（pnpm）接管过的 profile 不要再手工拷：两套安装会互相遮蔽，
+# 而且管理器升级后运行的可能还是旧文件。
+if grep -q "dsh-remote-workspaces" "$PROFILE/pnpm-lock.yaml" 2>/dev/null; then
+  cat >&2 <<'MSG'
+这个 profile 里的 dsh-remote-workspaces 由插件管理器（pnpm）安装，不要再手工拷贝。
+请在 DSH 的「设置 → 插件」里升级；确需手工接管时，先执行：
+
+  cd <profile> && pnpm remove dsh-remote-workspaces
+
+然后再跑本脚本。
+MSG
+  exit 1
+fi
+
 echo "==> profile: $PROFILE"
 echo "==> 源码   : $SRC"
 

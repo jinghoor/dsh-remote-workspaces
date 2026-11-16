@@ -43,6 +43,22 @@ DSH 0.2.2-rc.1 没有这个能力：客户端没有 remote host 界面，CLI 没
 `dsh-api-remotes` 只是 BFF 层（不含传输），`experimental-liveshare` 是**反方向**
 （把本机会话推给外部查看者，且 Relay 服务端要自建）。所以整套是自己写的。
 
+## 安装方式只能选一种
+
+DSH 有两种装法，**不要混用**，否则会出现"管理器说装好了、运行的是另一份"：
+
+| 方式 | 适用 | 说明 |
+|---|---|---|
+| 插件管理器（推荐） | 所有人 | 设置 → 插件 → 添加插件，粘贴 release 地址。升级也在管理器里 |
+| `install.sh` | 只给开发者/离线环境 | 直接拷到 profile 的 `plugins/`。如果该 profile 已被管理器接管，脚本会拒绝执行 |
+
+早期用 `launchctl` 起过 CLI 客户端的机器，要先停掉那条 LaunchAgent，否则它一直占着本地端口：
+
+```bash
+launchctl unload ~/Library/LaunchAgents/dev.dsh.relay.client.plist
+mv ~/Library/LaunchAgents/dev.dsh.relay.client.plist ~/Library/LaunchAgents/dev.dsh.relay.client.plist.disabled
+```
+
 ## 安装
 
 ### 1. 服务器（中转）
@@ -86,7 +102,7 @@ node dsh-relay.mjs agent --relay <服务器>:19090 \
 DSH → **设置 → 插件 → 添加插件**，粘贴这个地址，点安装，然后重启 DSH：
 
 ```
-https://github.com/jinghoor/dsh-remote-workspaces/releases/download/v1.8.0/dsh-remote-workspaces-1.2.0.tgz
+https://github.com/jinghoor/dsh-remote-workspaces/releases/download/v1.9.0/dsh-remote-workspaces-1.2.1.tgz
 ```
 
 > 这个框接受的是**安装包地址**（tarball / git 仓库 / npm 包名），不是市场索引。
