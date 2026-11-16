@@ -41,7 +41,7 @@ echo "    完成"
 
 echo "==> 3/7 打包"
 (cd plugin && npm pack >/dev/null)
-TARBALL="plugin/dsh-remote-workspaces-${VERSION}.tgz"
+TARBALL="plugin/jinghoor-dsh-remote-workspaces-${VERSION}.tgz"
 [ -f "$TARBALL" ] || { echo "打包失败" >&2; exit 1; }
 ls -l "$TARBALL" | awk '{print "   ", $NF, $5"字节"}'
 
@@ -74,8 +74,8 @@ market.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n')
 readme = pathlib.Path('README.md')
 text = readme.read_text()
 text = re.sub(
-  r'releases/download/v[0-9.]+/dsh-remote-workspaces-[0-9.]+\.tgz',
-  f'releases/download/v{version}/dsh-remote-workspaces-{version}.tgz',
+  r'releases/download/v[0-9.]+/[a-z-]*dsh-remote-workspaces-[0-9.]+\.tgz',
+  f'releases/download/v{version}/jinghoor-dsh-remote-workspaces-{version}.tgz',
   text,
 )
 readme.write_text(text)
@@ -96,7 +96,7 @@ gh release create "v$VERSION" "$TARBALL" \
   --title "v$VERSION" \
   --notes "安装（插件管理器 →「添加插件」粘贴）：
 
-    https://github.com/jinghoor/dsh-remote-workspaces/releases/download/v$VERSION/dsh-remote-workspaces-$VERSION.tgz
+    https://github.com/jinghoor/dsh-remote-workspaces/releases/download/v$VERSION/jinghoor-dsh-remote-workspaces-$VERSION.tgz
 
 ${NOTE}"
 

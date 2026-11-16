@@ -19,7 +19,7 @@
 DSH → 设置 → 插件 → **添加插件**，粘贴：
 
 ```
-https://github.com/jinghoor/dsh-remote-workspaces/releases/download/v1.13.0/dsh-remote-workspaces-1.13.0.tgz
+https://github.com/jinghoor/dsh-remote-workspaces/releases/download/v1.13.0/jinghoor-dsh-remote-workspaces-1.13.0.tgz
 ```
 
 装完**重启 DSH**，设置里出现「DSH远程客户端」。
@@ -129,7 +129,7 @@ node dsh-relay.mjs agent --relay <服务器>:19090 \
 DSH → **设置 → 插件 → 添加插件**，粘贴这个地址，点安装，然后重启 DSH：
 
 ```
-https://github.com/jinghoor/dsh-remote-workspaces/releases/download/v1.13.0/dsh-remote-workspaces-1.13.0.tgz
+https://github.com/jinghoor/dsh-remote-workspaces/releases/download/v1.13.0/jinghoor-dsh-remote-workspaces-1.13.0.tgz
 ```
 
 > 这个框接受的是**安装包地址**（tarball / git 仓库 / npm 包名），不是市场索引。
