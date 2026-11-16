@@ -2,7 +2,8 @@ node_modules/
 dist/
 *.tgz
 .work/
-screenshots/
+# 仓库里只保留 docs/screenshots 的产品图，本地 mock 目录忽略
+/screenshots/
 *.bak-*
 .DS_Store
 
