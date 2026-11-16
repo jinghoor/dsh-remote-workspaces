@@ -102,7 +102,7 @@ node dsh-relay.mjs agent --relay <服务器>:19090 \
 DSH → **设置 → 插件 → 添加插件**，粘贴这个地址，点安装，然后重启 DSH：
 
 ```
-https://github.com/jinghoor/dsh-remote-workspaces/releases/download/v1.10.0/dsh-remote-workspaces-1.2.2.tgz
+https://github.com/jinghoor/dsh-remote-workspaces/releases/download/v1.11.0/dsh-remote-workspaces-1.3.0.tgz
 ```
 
 > 这个框接受的是**安装包地址**（tarball / git 仓库 / npm 包名），不是市场索引。

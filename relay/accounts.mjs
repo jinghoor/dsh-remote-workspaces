@@ -129,6 +129,29 @@ export class AccountStore {
     return true
   }
 
+  /**
+   * Remember one viewer machine. Clients pair through a device name, so they have no
+   * device identity of their own — this is how "who is watching me" stays answerable.
+   */
+  noteClient(username, clientId, hostname, watching) {
+    if (typeof clientId !== 'string' || clientId === '') return
+    const user = this.#data.users[username]
+    if (user === undefined) return
+    user.clients ??= {}
+    user.clients[clientId] = { hostname: String(hostname ?? ''), watching: String(watching ?? ''), lastSeen: new Date().toISOString() }
+    const keys = Object.keys(user.clients)
+    if (keys.length > 32) {
+      for (const key of keys.slice(0, keys.length - 32)) delete user.clients[key]
+    }
+    this.#persist()
+  }
+
+  /** @returns the viewer machines recorded for one account. */
+  clientsOf(username) {
+    const user = this.#data.users[username]
+    return Object.entries(user?.clients ?? {}).map(([clientId, info]) => ({ clientId, ...info }))
+  }
+
   /** @returns whether this account has ever used the device name. */
   ownsDevice(username, device) {
     if (!DEVICE_PATTERN.test(device)) return false

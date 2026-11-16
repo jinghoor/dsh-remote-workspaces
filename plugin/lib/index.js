@@ -747,7 +747,7 @@ function apply(ctx, rawConfig) {
         }
         const answer = await relayRequest(config, 'GET', '/v1/devices')
         if (answer.ok !== true) return send(res, 200, { ok: false, error: answer.error ?? `HTTP ${answer.status}` })
-        send(res, 200, { ok: true, value: { devices: answer.devices ?? [] } })
+        send(res, 200, { ok: true, value: { devices: answer.devices ?? [], clients: answer.clients ?? [] } })
       })
     })
 
@@ -780,7 +780,7 @@ function apply(ctx, rawConfig) {
       guard(res, 'relay-save', async () => {
         const body = await readJson(req, 64 * 1024)
         const patch = {}
-        for (const key of ['role', 'device', 'local', 'listen', 'relay', 'fingerprint', 'cookieDb', 'endpointFile']) {
+        for (const key of ['role', 'device', 'local', 'listen', 'relay', 'fingerprint', 'cookieDb', 'endpointFile', 'clientId']) {
           if (typeof body?.[key] === 'string') patch[key] = body[key]
         }
         if (patch.role !== undefined && patch.role !== 'agent' && patch.role !== 'client') {

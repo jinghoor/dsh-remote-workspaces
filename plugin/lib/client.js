@@ -150,6 +150,19 @@ window.__ModuleLoader__.load({
         h('path', { d: 'M2 4.2A2.2 2.2 0 0 1 4.2 2h7.6A2.2 2.2 0 0 1 14 4.2v4.4a2.2 2.2 0 0 1-2.2 2.2H7.4L4 13.4V10.8h-.2A1.8 1.8 0 0 1 2 9V4.2z' }))
     }
 
+    /** 远程端：显示器；本地端：笔记本。纯几何图形，跟主题色走。 */
+    function IconMonitor(props) {
+      return h('svg', { width: 15, height: 15, viewBox: '0 0 16 16', fill: 'none', stroke: 'currentColor', strokeWidth: 1.4, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': 'true' },
+        h('rect', { x: 1.6, y: 2.6, width: 12.8, height: 8.4, rx: 1.6 }),
+        h('path', { d: 'M6 13.4h4' }))
+    }
+
+    function IconLaptop(props) {
+      return h('svg', { width: 15, height: 15, viewBox: '0 0 16 16', fill: 'none', stroke: 'currentColor', strokeWidth: 1.4, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': 'true' },
+        h('rect', { x: 3, y: 3.2, width: 10, height: 7, rx: 1.4 }),
+        h('path', { d: 'M1.6 12.4h12.8l-1.2 1.4H2.8z' }))
+    }
+
     function Check(props) {
       return h('span', { style: { ...styles.check, ...(props.on ? styles.checkOn : {}) } },
         props.on ? h('svg', { width: 9, height: 9, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 3 }, h('path', { d: 'M5 12.5l4.5 4.5L19 7' })) : null)
@@ -316,6 +329,7 @@ window.__ModuleLoader__.load({
       const [editing, setEditing] = react.useState(null)
       const [adding, setAdding] = react.useState(false)
       const [devices, setDevices] = react.useState([])
+      const [viewers, setViewers] = react.useState([])
 
       const load = react.useCallback(() => {
         api('/relay/status')
@@ -336,8 +350,8 @@ window.__ModuleLoader__.load({
           .then(setConfig)
           .catch((e) => setError(String(e.message ?? e)))
         api('/relay/devices')
-          .then((value) => setDevices(value.devices ?? []))
-          .catch(() => setDevices([]))
+          .then((value) => { setDevices(value.devices ?? []); setViewers(value.clients ?? []) })
+          .catch(() => { setDevices([]); setViewers([]) })
       }, [])
 
       react.useEffect(load, [load])
@@ -498,29 +512,29 @@ window.__ModuleLoader__.load({
               }, '停止'))),
           ),
 
-        // 2.5 账号下的设备：远程端（被连接的那一端）与本机分开显示
+        // 2.5 账号下的设备：远程端 / 本地端 两段，每行两行文字 + 右侧操作
         signedIn ? h('div', { style: styles.card },
           h('div', { style: styles.headRow },
             h('span', { style: styles.cardTitle }, '账号下的设备'),
-            h('span', { style: { marginLeft: 'auto', ...styles.hint } },
-              devices.length === 0 ? '' : `${devices.length} 台远程端`)),
-          h('div', { style: styles.host },
-            h('div', { style: styles.deviceGroup }, '远程端（被连接的那一端）'),
+            h('span', { style: { marginLeft: 'auto', ...styles.countChip } }, `${devices.length + viewers.length} 台`)),
+          h('div', { style: styles.deviceList },
+
+            h('div', { style: styles.groupLabel }, '远程端'),
             devices.length === 0
-              ? h('div', { style: styles.hint }, '还没有。在另一台机器上登录同一账号、选「远程端」并启动。')
+              ? h('div', { style: styles.emptyHint }, '还没有远程端。在另一台机器上登录同一账号、选「远程端」并启动。')
               : devices.map((item) => {
                   const tunnel = (status?.tunnels ?? []).find((entry) => entry.id === `device-${item.device}`)
                   const linked = tunnel?.running === true
                   const own = item.device === device
-                  const detail = own
-                    ? (running ? '本机正在配对' : '本机配对的设备名')
-                    : (linked ? `已连接 ${String(tunnel.listen).replace('127.0.0.1:', ':')}` : item.online ? '在线（未连接）' : '离线')
+                  const meta = own
+                    ? (running ? `本机正在配对${item.online ? ' · 在线' : ' · 对方离线'}` : '本机配对的设备名 · 未启动')
+                    : (linked ? `已连接 ${String(tunnel.listen).replace('127.0.0.1:', ':')}` : item.online ? '在线 · 未连接' : '离线')
                   const action = own
-                    ? h('span', { style: { ...styles.hint, marginLeft: 'auto' } }, '在上面「这台机器」里管理')
+                    ? h('span', { style: styles.rowNote }, '在「这台机器」里管理')
                     : role !== 'client'
-                      ? h('span', { style: { ...styles.hint, marginLeft: 'auto' } }, '只有本地端可以连接')
+                      ? h('span', { style: styles.rowNote }, '仅本地端可连接')
                       : h('button', {
-                          style: { ...styles.button, marginLeft: 'auto' },
+                          style: linked ? { ...styles.button, ...styles.buttonQuiet } : styles.button,
                           disabled: busy,
                           onClick: () => run(
                             () => (linked
@@ -529,27 +543,44 @@ window.__ModuleLoader__.load({
                             linked ? `已断开 ${item.device}` : `已连接 ${item.device}，可在下方勾选工作区`,
                           ),
                         }, linked ? '断开' : '连接')
-                  return h('div', { key: item.device, style: styles.deviceRow },
-                    h('span', { style: { ...styles.dot, background: linked || (own && running) ? '#34d399' : item.online ? '#f59e0b' : 'rgba(255,255,255,.25)' } }),
-                    h('span', { style: styles.deviceName }, item.device),
-                    own ? h('span', { style: styles.badge }, '当前配对') : null,
-                    h('span', { style: styles.hint }, detail),
+                  return h('div', { key: `remote-${item.device}`, style: styles.deviceRow },
+                    h('span', { style: { ...styles.deviceAvatar, opacity: item.online ? 1 : 0.5 } }, h(IconMonitor, null)),
+                    h('span', { style: styles.deviceBody },
+                      h('span', { style: styles.deviceNameLine },
+                        h('span', { style: styles.deviceName }, item.device),
+                        own ? h('span', { style: styles.badgeNeutral }, '当前配对') : null),
+                      h('span', { style: styles.deviceMeta }, meta)),
                     action,
                   )
                 }),
-            h('div', { style: { ...styles.deviceGroup, paddingTop: 12 } }, '本地端（我这台）'),
+
+            h('div', { style: styles.groupLabel }, '本地端'),
             h('div', { style: styles.deviceRow },
-              h('span', { style: { ...styles.dot, background: running ? '#34d399' : 'rgba(255,255,255,.25)' } }),
-              h('span', { style: styles.deviceName }, status?.hostname ?? '本机'),
-              h('span', { style: styles.badge }, '本地端'),
-              h('span', { style: styles.hint },
-                running ? `正在查看 ${device}` : '未连接（在上面「这台机器」里启动）'),
-            ),
+              h('span', { style: styles.deviceAvatar }, h(IconLaptop, null)),
+              h('span', { style: styles.deviceBody },
+                h('span', { style: styles.deviceNameLine },
+                  h('span', { style: styles.deviceName }, status?.hostname ?? '本机'),
+                  h('span', { style: styles.badgeOn }, '本机')),
+                h('span', { style: styles.deviceMeta }, running ? `正在查看 ${device}` : '未连接')),
+              h('span', { style: styles.rowNote }, '当前窗口')),
+            viewers.length === 0
+              ? h('div', { style: styles.emptyHint }, '没有其他本地端在查看这个账号。')
+              : viewers.map((item) => h('div', { key: `client-${item.clientId}`, style: styles.deviceRow },
+                  h('span', { style: { ...styles.deviceAvatar, opacity: item.online ? 1 : 0.5 } }, h(IconLaptop, null)),
+                  h('span', { style: styles.deviceBody },
+                    h('span', { style: styles.deviceNameLine },
+                      h('span', { style: styles.deviceName }, item.hostname || item.clientId),
+                      item.online ? h('span', { style: styles.badgeOn }, '在线') : null),
+                    h('span', { style: styles.deviceMeta },
+                      `${item.watching === '' ? '未指定设备' : `正在查看 ${item.watching}`}${item.online ? '' : ' · 离线'}`)),
+                )),
+
             devices.length === 1
-              ? h('div', { style: { ...styles.hint, paddingTop: 10 } },
+              ? h('div', { style: styles.footNote },
                   '两台机器用同一个设备名时，relay 会当成同一台。要分别看到，请给它们起不同的名字（例如 desk / laptop）。')
               : null,
-          )) : null,
+          ),
+        ) : null,
 
         // 3. 远程主机与工作区
         h('div', { style: styles.card },

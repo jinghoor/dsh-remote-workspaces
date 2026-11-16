@@ -16,6 +16,7 @@
 import net from 'node:net'
 import tls from 'node:tls'
 import fs from 'node:fs'
+import os from 'node:os'
 import crypto from 'node:crypto'
 
 const HELLO = 1
@@ -132,6 +133,7 @@ function parseArgs(argv) {
     cookieDb: '',
     endpointFile: '',
     token: '',
+    clientId: '',
     user: '',
     password: '',
     hours: '',
@@ -699,6 +701,9 @@ function serveClient(options) {
       control = await dialRelay(options, {
         role: 'client',
         pong: true,
+        // 本地端的身份：主机名给人看，clientId 给 relay 去重
+        hostname: os.hostname(),
+        clientId: options.clientId === '' ? os.hostname() : options.clientId,
         device: options.device,
         ...(options.token === '' ? {} : { token: options.token }),
         ...(options.token === '' ? { secret: options.secret } : {}),

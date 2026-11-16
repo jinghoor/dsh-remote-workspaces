@@ -525,7 +525,9 @@ function serveApi(socket, method, rawPath, headers, body) {
       ...item,
       online: agents.has(`user:${username}/${item.device}`),
     }))
-    return httpReply(socket, 200, { ok: true, username, devices })
+    const liveClients = new Set([...clients].map((conn) => conn.clientId).filter((id) => typeof id === 'string'))
+    const viewers = accounts.clientsOf(username).map((item) => ({ ...item, online: liveClients.has(item.clientId) }))
+    return httpReply(socket, 200, { ok: true, username, devices, clients: viewers })
   }
   return httpReply(socket, 404, { ok: false, error: 'not found' })
 }
@@ -658,10 +660,18 @@ const server = tls.createServer({ cert: fs.readFileSync(args.cert), key: fs.read
         socket.end(encodeFrame(CLOSE, 0))
         return
       }
-      const conn = { socket, device: key, pong: parsed.pong === true }
+      const conn = {
+        socket,
+        device: key,
+        pong: parsed.pong === true,
+        username: username,
+        clientId: typeof parsed.clientId === 'string' ? parsed.clientId : undefined,
+        hostname: typeof parsed.hostname === 'string' ? parsed.hostname : '',
+      }
       clients.add(conn)
       greeted = true
-      log(`client attached for ${username === undefined ? device : `${username}/${device}`}${agents.has(key) ? '' : ' (agent offline)'}`)
+      if (username !== undefined) accounts.noteClient(username, conn.clientId, conn.hostname, device)
+      log(`client attached for ${username === undefined ? device : `${username}/${device}`}${agents.has(key) ? '' : ' (agent offline)'}${conn.hostname === undefined ? '' : ` from ${conn.hostname}`}`)
       const known = agents.get(key)
       if (known?.token !== undefined) send(conn, TOKEN, 0, Buffer.from(known.token, 'utf8'))
       if (known?.cookie !== undefined) send(conn, COOKIE, 0, Buffer.from(known.cookie, 'utf8'))
