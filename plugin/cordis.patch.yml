@@ -2,4 +2,4 @@
 # name 必须与 package.json 的包名一致，否则加载器解析不到。
 - insert:
     - id: dsh-remote-workspaces
-      name: '@jinghoor/dsh-remote-workspaces'
+      name: 'dsh-remote-client'

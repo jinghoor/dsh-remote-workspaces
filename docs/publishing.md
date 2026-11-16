@@ -18,13 +18,13 @@ grep -rn OWNER plugin/package.json market/index.json
 ```bash
 cd plugin
 npm whoami            # 没登录先 npm login
-npm publish           # 包名 dsh-remote-workspaces，publishConfig.access=public
+npm publish           # 包名 dsh-remote-client，publishConfig.access=public
 ```
 
 发布后确认：
 
 ```bash
-npm view dsh-remote-workspaces version dist.tarball engines
+npm view dsh-remote-client version dist.tarball engines
 ```
 
 包内应该只有 `lib/` 下的实现和 `README.md` / `LICENSE`（`files` 字段已限定）。
@@ -40,7 +40,7 @@ node scripts/validate-market-index.mjs
 
 ```
 PASS  format=1  title={"en":"DSH Remote Workspaces","zh":"DSH 远程工作区"}  plugins=1
-      dsh-remote-workspaces · versions=1.0.0 · category=remote
+      dsh-remote-client · versions=1.0.0 · category=remote
 ```
 
 通过不了会打印具体路径，例如 `$.plugins[0].versions[0].version must be an exact SemVer version`。

@@ -41,7 +41,8 @@ echo "    完成"
 
 echo "==> 3/7 打包"
 (cd plugin && npm pack >/dev/null)
-TARBALL="plugin/jinghoor-dsh-remote-workspaces-${VERSION}.tgz"
+PKG_NAME="$(python3 -c "import json;print(json.load(open('plugin/package.json'))['name'].split('/')[-1])")"
+TARBALL="plugin/${PKG_NAME}-${VERSION}.tgz"
 [ -f "$TARBALL" ] || { echo "打包失败" >&2; exit 1; }
 ls -l "$TARBALL" | awk '{print "   ", $NF, $5"字节"}'
 
@@ -55,6 +56,7 @@ echo "==> 5/7 市场索引指向该提交"
 python3 - "$VERSION" "$SHA" <<'PY'
 import json, pathlib, re, sys, time
 version, sha = sys.argv[1], sys.argv[2]
+pkg = json.loads(pathlib.Path('plugin/package.json').read_text())['name'].split('/')[-1]
 market = pathlib.Path('market/index.json')
 data = json.loads(market.read_text())
 entry = data['plugins'][0]['versions'][0]
@@ -74,8 +76,8 @@ market.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n')
 readme = pathlib.Path('README.md')
 text = readme.read_text()
 text = re.sub(
-  r'releases/download/v[0-9.]+/[a-z-]*dsh-remote-workspaces-[0-9.]+\.tgz',
-  f'releases/download/v{version}/jinghoor-dsh-remote-workspaces-{version}.tgz',
+  r'releases/download/v[0-9.]+/[^/]+\.tgz',
+  f'releases/download/v{version}/{pkg}-{version}.tgz',
   text,
 )
 readme.write_text(text)
@@ -96,7 +98,7 @@ gh release create "v$VERSION" "$TARBALL" \
   --title "v$VERSION" \
   --notes "安装（插件管理器 →「添加插件」粘贴）：
 
-    https://github.com/jinghoor/dsh-remote-workspaces/releases/download/v$VERSION/jinghoor-dsh-remote-workspaces-$VERSION.tgz
+    https://github.com/jinghoor/dsh-remote-workspaces/releases/download/v$VERSION/$PKG_NAME-$VERSION.tgz
 
 ${NOTE}"
 
