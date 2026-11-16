@@ -124,6 +124,75 @@ window.__ModuleLoader__.load({
         maxHeight: 220,
         overflow: 'auto',
       },
+      // —— 设备列表（远程端 / 本地端）——
+      deviceList: { padding: '2px 20px 16px' },
+      groupLabel: {
+        fontSize: 11,
+        fontWeight: 600,
+        letterSpacing: '.06em',
+        color: 'var(--dsh-text-secondary, rgba(255,255,255,.45))',
+        margin: '14px 0 4px',
+      },
+      deviceRow: { display: 'flex', alignItems: 'center', gap: 11, padding: '7px 0' },
+      deviceAvatar: {
+        width: 28,
+        height: 28,
+        borderRadius: 8,
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'var(--dsh-surface-sunken, rgba(255,255,255,.06))',
+        color: 'var(--dsh-text-secondary, rgba(255,255,255,.7))',
+        flex: '0 0 auto',
+      },
+      deviceBody: { display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0, flex: 1 },
+      deviceNameLine: { display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 },
+      deviceName: { fontSize: 13.5, fontWeight: 600, lineHeight: '18px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+      deviceMeta: {
+        fontSize: 11.5,
+        lineHeight: '16px',
+        color: 'var(--dsh-text-secondary, rgba(255,255,255,.5))',
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+      },
+      rowNote: { fontSize: 11.5, color: 'var(--dsh-text-secondary, rgba(255,255,255,.42))', whiteSpace: 'nowrap', flex: '0 0 auto' },
+      countChip: {
+        fontSize: 11,
+        lineHeight: '18px',
+        padding: '0 8px',
+        borderRadius: 999,
+        background: 'var(--dsh-surface-sunken, rgba(255,255,255,.06))',
+        color: 'var(--dsh-text-secondary, rgba(255,255,255,.6))',
+      },
+      badgeOn: {
+        fontSize: 10.5,
+        lineHeight: '16px',
+        padding: '0 6px',
+        borderRadius: 999,
+        background: 'rgba(52,211,153,.16)',
+        color: '#34d399',
+        whiteSpace: 'nowrap',
+      },
+      badgeNeutral: {
+        fontSize: 10.5,
+        lineHeight: '16px',
+        padding: '0 6px',
+        borderRadius: 999,
+        background: 'var(--dsh-surface-sunken, rgba(255,255,255,.08))',
+        color: 'var(--dsh-text-secondary, rgba(255,255,255,.62))',
+        whiteSpace: 'nowrap',
+      },
+      emptyHint: { fontSize: 12, lineHeight: '17px', color: 'var(--dsh-text-secondary, rgba(255,255,255,.42))', padding: '4px 0' },
+      footNote: {
+        fontSize: 11.5,
+        lineHeight: '17px',
+        color: 'var(--dsh-text-secondary, rgba(255,255,255,.42))',
+        borderTop: '1px solid var(--dsh-border-subtle, rgba(255,255,255,.07))',
+        marginTop: 14,
+        paddingTop: 10,
+      },
+      buttonQuiet: { opacity: 0.72 },
     }
 
     async function api(path, init) {
@@ -382,6 +451,9 @@ window.__ModuleLoader__.load({
         }
       }, [load])
 
+      const myClientId = status?.clientId ?? status?.hostname ?? ''
+      // 本机已经在上面单独列了一行，别在旁观者里再出现一次
+      const otherViewers = viewers.filter((item) => item.clientId !== myClientId)
       const signedIn = status?.hasToken === true
       const running = status?.running === true
       const agentDown = status?.agentOnline === false
@@ -516,7 +588,8 @@ window.__ModuleLoader__.load({
         signedIn ? h('div', { style: styles.card },
           h('div', { style: styles.headRow },
             h('span', { style: styles.cardTitle }, '账号下的设备'),
-            h('span', { style: { marginLeft: 'auto', ...styles.countChip } }, `${devices.length + viewers.length} 台`)),
+            h('span', { style: { marginLeft: 'auto', ...styles.countChip } },
+              `${devices.length + otherViewers.length + 1} 台`)),
           h('div', { style: styles.deviceList },
 
             h('div', { style: styles.groupLabel }, '远程端'),
@@ -563,9 +636,9 @@ window.__ModuleLoader__.load({
                   h('span', { style: styles.badgeOn }, '本机')),
                 h('span', { style: styles.deviceMeta }, running ? `正在查看 ${device}` : '未连接')),
               h('span', { style: styles.rowNote }, '当前窗口')),
-            viewers.length === 0
+            otherViewers.length === 0
               ? h('div', { style: styles.emptyHint }, '没有其他本地端在查看这个账号。')
-              : viewers.map((item) => h('div', { key: `client-${item.clientId}`, style: styles.deviceRow },
+              : otherViewers.map((item) => h('div', { key: `client-${item.clientId}`, style: styles.deviceRow },
                   h('span', { style: { ...styles.deviceAvatar, opacity: item.online ? 1 : 0.5 } }, h(IconLaptop, null)),
                   h('span', { style: styles.deviceBody },
                     h('span', { style: styles.deviceNameLine },
