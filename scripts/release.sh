@@ -103,5 +103,5 @@ ${NOTE}"
 echo
 echo "完成：v$VERSION"
 echo "  资产: $TARBALL"
-echo "  索引: 指向 $SHA（plugin/ 与 tag 内容一致）"
+echo "  索引: 指向 ${SHA}（plugin/ 与 tag 内容一致）"
 echo "  CI  : gh run list --limit 1"
