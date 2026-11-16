@@ -1,6 +1,6 @@
 {
   "name": "dsh-remote-client",
-  "version": "1.13.1",
+  "version": "1.13.2",
   "description": "把另一台电脑的 DeepSeek Harness（DSH）工作区与会话并进本机侧边栏：内置公共中转，装好登录同一账号即可在多台设备间互连。",
   "type": "module",
   "main": "lib/index.js",
