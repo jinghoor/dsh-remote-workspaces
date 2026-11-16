@@ -366,6 +366,7 @@ export class TunnelSupervisor {
     return {
       running: this.running,
       pid: this.#tunnels.get('primary')?.child?.pid ?? pids.primary,
+      hostname: os.hostname(),
       username: config.username ?? null,
       role: config.role ?? null,
       device: config.device ?? null,

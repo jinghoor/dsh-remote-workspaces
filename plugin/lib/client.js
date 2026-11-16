@@ -498,37 +498,58 @@ window.__ModuleLoader__.load({
               }, '停止'))),
           ),
 
-        // 2.5 账号下的其他设备：一键开额外隧道，本地端可同时看多台
-        signedIn
-          ? h('div', { style: styles.card },
-              h('div', { style: styles.headRow },
-                h('span', { style: styles.cardTitle }, '账号下的其他设备'),
-                h('span', { style: { marginLeft: 'auto', ...styles.hint } },
-                  devices.length === 0 ? '' : `共 ${devices.length} 台`)),
-              devices.filter((item) => item.device !== device).length === 0
-                ? h('div', { style: { ...styles.hint, padding: '0 20px 16px' } },
-                    '账号下还没有其他设备。在另一台机器上登录同一账号并启动，这里就会出现。')
-                : h('div', { style: styles.host },
-                    devices.filter((item) => item.device !== device).map((item) => {
-                      const tunnel = (status?.tunnels ?? []).find((entry) => entry.id === `device-${item.device}`)
-                      const linked = tunnel?.running === true
-                      return h('div', { key: item.device, style: styles.deviceRow },
-                        h('span', { style: { ...styles.dot, background: item.online ? '#34d399' : 'rgba(255,255,255,.25)' } }),
-                        h('span', { style: styles.deviceName }, item.device),
-                        h('span', { style: styles.hint },
-                          linked ? `已连接 ${String(tunnel.listen).replace('127.0.0.1:', ':')}` : item.online ? '在线' : '离线'),
-                        role === 'client'
-                          ? h('button', {
-                              style: { ...styles.button, marginLeft: 'auto' },
-                              disabled: busy,
-                              onClick: () => run(
-                                () => (linked ? post('/relay/tunnel/stop', { id: tunnel.id }) : post('/relay/tunnel/start', { device: item.device })),
-                                linked ? `已断开 ${item.device}` : `已连接 ${item.device}，可在下方主机列表里勾选工作区`,
-                              ),
-                            }, linked ? '断开' : '连接')
-                          : h('span', { style: { ...styles.hint, marginLeft: 'auto' } }, '（只有本地端可以连接）'))
-                    })))
-          : null,
+        // 2.5 账号下的设备：远程端（被连接的那一端）与本机分开显示
+        signedIn ? h('div', { style: styles.card },
+          h('div', { style: styles.headRow },
+            h('span', { style: styles.cardTitle }, '账号下的设备'),
+            h('span', { style: { marginLeft: 'auto', ...styles.hint } },
+              devices.length === 0 ? '' : `${devices.length} 台远程端`)),
+          h('div', { style: styles.host },
+            h('div', { style: styles.deviceGroup }, '远程端（被连接的那一端）'),
+            devices.length === 0
+              ? h('div', { style: styles.hint }, '还没有。在另一台机器上登录同一账号、选「远程端」并启动。')
+              : devices.map((item) => {
+                  const tunnel = (status?.tunnels ?? []).find((entry) => entry.id === `device-${item.device}`)
+                  const linked = tunnel?.running === true
+                  const own = item.device === device
+                  const detail = own
+                    ? (running ? '本机正在配对' : '本机配对的设备名')
+                    : (linked ? `已连接 ${String(tunnel.listen).replace('127.0.0.1:', ':')}` : item.online ? '在线（未连接）' : '离线')
+                  const action = own
+                    ? h('span', { style: { ...styles.hint, marginLeft: 'auto' } }, '在上面「这台机器」里管理')
+                    : role !== 'client'
+                      ? h('span', { style: { ...styles.hint, marginLeft: 'auto' } }, '只有本地端可以连接')
+                      : h('button', {
+                          style: { ...styles.button, marginLeft: 'auto' },
+                          disabled: busy,
+                          onClick: () => run(
+                            () => (linked
+                              ? post('/relay/tunnel/stop', { id: tunnel.id })
+                              : post('/relay/tunnel/start', { device: item.device })),
+                            linked ? `已断开 ${item.device}` : `已连接 ${item.device}，可在下方勾选工作区`,
+                          ),
+                        }, linked ? '断开' : '连接')
+                  return h('div', { key: item.device, style: styles.deviceRow },
+                    h('span', { style: { ...styles.dot, background: linked || (own && running) ? '#34d399' : item.online ? '#f59e0b' : 'rgba(255,255,255,.25)' } }),
+                    h('span', { style: styles.deviceName }, item.device),
+                    own ? h('span', { style: styles.badge }, '当前配对') : null,
+                    h('span', { style: styles.hint }, detail),
+                    action,
+                  )
+                }),
+            h('div', { style: { ...styles.deviceGroup, paddingTop: 12 } }, '本地端（我这台）'),
+            h('div', { style: styles.deviceRow },
+              h('span', { style: { ...styles.dot, background: running ? '#34d399' : 'rgba(255,255,255,.25)' } }),
+              h('span', { style: styles.deviceName }, status?.hostname ?? '本机'),
+              h('span', { style: styles.badge }, '本地端'),
+              h('span', { style: styles.hint },
+                running ? `正在查看 ${device}` : '未连接（在上面「这台机器」里启动）'),
+            ),
+            devices.length === 1
+              ? h('div', { style: { ...styles.hint, paddingTop: 10 } },
+                  '两台机器用同一个设备名时，relay 会当成同一台。要分别看到，请给它们起不同的名字（例如 desk / laptop）。')
+              : null,
+          )) : null,
 
         // 3. 远程主机与工作区
         h('div', { style: styles.card },
